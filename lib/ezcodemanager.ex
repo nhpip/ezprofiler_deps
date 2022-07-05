@@ -8,7 +8,7 @@ defmodule EZProfiler.Manager do
     profiler: "eprof",
     sort: "mfa",
     cpfo: "false",
-    ezprofiler_path: nil
+    ezprofiler_path: :system
   ]
 
   def start_ezprofiler(), do:
@@ -19,7 +19,7 @@ defmodule EZProfiler.Manager do
 
     Map.from_struct(cfg)
     |> Map.replace!(:node, (if is_nil(cfg.node), do: node() |> Atom.to_string(), else: cfg.node))
-    |> Map.replace!(:ezprofiler_path, (if is_nil(cfg.ezprofiler_path), do: System.find_executable("ezprofiler"), else: cfg.ezprofiler_path))
+    |> Map.replace!(:ezprofiler_path, find_ezprofiler(cfg.ezprofiler_path))
     |> Map.to_list()
     |> Enum.filter(&(not is_nil(elem(&1, 1))))
     |> Enum.reduce({nil, []}, fn({:ezprofiler_path, path}, {_, acc}) -> {path, acc};
@@ -75,6 +75,22 @@ defmodule EZProfiler.Manager do
     after
       5000 -> {:error, :timeout}
     end
+  end
+
+  defp find_ezprofiler(:system) do
+    System.find_executable("ezprofiler")
+  end
+
+  defp find_ezprofiler(:deps) do
+    path = Mix.Dep.cached()
+           |> Enum.find(&(&1.app == :ezprofiler))
+           |> Map.get(:opts)
+           |> Keyword.get(:dest)
+    "#{path}/ezprofiler}"
+  end
+
+  defp find_ezprofiler(path) do
+    path
   end
 
   defp flatten({path, cfg}), do:
