@@ -60,14 +60,11 @@ defmodule EZProfiler.Manager do
 
   defp do_start_profiler({profiler_path, opts}) do
     pid = self()
-    IO.inspect(binding())
-
     spawn(fn ->
             try do
-              IO.inspect(:starting)
-              System.cmd(System.find_executable(profiler_path), opts)
-              IO.inspect(:started)
-              send(pid, {__MODULE__, {:ok, :started}})
+              filename = "/tmp/#{random_filename()}"
+              spawn(fn -> wait_for_start(pid, filename) end)
+              System.cmd(System.find_executable(profiler_path), ["--inline", filename | opts])
             rescue
               e ->
                 send(pid, {__MODULE__, {:error, e}})
@@ -91,5 +88,23 @@ defmodule EZProfiler.Manager do
 
   defp make_opt({k, v}), do:
     ["--#{k}", (if is_atom(v), do: Atom.to_string(v), else: v)]
+
+  defp wait_for_start(pid, filename) do
+    if do_wait_for_start(filename, 10),
+      do: send(pid, {__MODULE__, {:ok, :started}}),
+      else: send(pid, {__MODULE__, {:error, :not_started}})
+  end
+
+  defp do_wait_for_start(_filename, 0), do:
+    false
+
+  defp do_wait_for_start(filename, count) do
+    Process.sleep(500)
+    File.exists?(filename) || do_wait_for_start(filename, count - 1)
+  end
+
+  defp random_filename() do
+    for _ <- 1..10, into: "", do: <<Enum.at('abcdefghijklmnopqrstuvwxyz', :crypto.rand_uniform(0, 26))>>
+  end
 
 end
