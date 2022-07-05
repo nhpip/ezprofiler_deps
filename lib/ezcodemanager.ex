@@ -5,7 +5,6 @@ defmodule EZProfiler.Manager do
     cookie: nil,
     mf: "_:_",
     directory: "/tmp/",
-    maxtime: 60,
     profiler: "eprof",
     sort: "mfa",
     cpfo: "false",
@@ -35,6 +34,9 @@ defmodule EZProfiler.Manager do
   def enable_profiling(label \\ :any_label), do:
     Kernel.apply(EZProfiler.ProfilerOnTarget, :allow_code_profiling, [node(), label, self()])
 
+  def disable_profiling(), do:
+    Kernel.apply(EZProfiler.ProfilerOnTarget, :reset_profiling, [node()])
+
   def wait_for_results(timeout \\ 60000) do
     receive do
       :results_available -> :ok
@@ -58,6 +60,8 @@ defmodule EZProfiler.Manager do
 
   defp do_start_profiler({profiler_path, opts}) do
     pid = self()
+    IO.inspect(binding())
+   
     spawn(fn ->
             try do
               System.cmd(System.find_executable(profiler_path), opts)
@@ -82,9 +86,6 @@ defmodule EZProfiler.Manager do
 
   defp make_opt({:cpfo, _v}), do:
     []
-
-  defp make_opt({:maxtime, v}), do:
-    ["--maxtime", Integer.to_string(v)]
 
   defp make_opt({k, v}), do:
     ["--#{k}", (if is_atom(v), do: Atom.to_string(v), else: v)]
