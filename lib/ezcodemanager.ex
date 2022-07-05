@@ -33,7 +33,15 @@ defmodule EZProfiler.Manager do
     Kernel.apply(EZProfiler.ProfilerOnTarget, :stop_profiling, [node()])
 
   def enable_profiling(label \\ :any_label), do:
-    Kernel.apply(EZProfiler.ProfilerOnTarget, :allow_code_profiling, [node(), label])
+    Kernel.apply(EZProfiler.ProfilerOnTarget, :allow_code_profiling, [node(), label, self()])
+
+  def wait_for_results(timeout \\ 60000) do
+    receive do
+      :results_available -> :ok
+    after
+      timeout -> {:error, :timeout}
+    end
+  end
 
   def get_profiling_results(display \\ false) do
     send({:main_event_handler, :ezprofiler@localhost}, {:get_results_file, self()})
@@ -49,7 +57,21 @@ defmodule EZProfiler.Manager do
   end
 
   defp do_start_profiler({profiler_path, opts}) do
-    spawn(fn -> System.cmd(System.find_executable(profiler_path), opts) end)
+    pid = self()
+    spawn(fn ->
+            try do
+              System.cmd(System.find_executable(profiler_path), opts)
+              send(pid, {__MODULE__, :ok})
+            rescue
+              e ->
+                send(pid, {__MODULE__, {:error, e}})
+            end
+    end)
+    receive do
+      {__MODULE__, rsp} -> rsp
+    after
+      5000 -> {:error, :timeout}
+    end
   end
 
   defp flatten({path, cfg}), do:
@@ -66,9 +88,5 @@ defmodule EZProfiler.Manager do
 
   defp make_opt({k, v}), do:
     ["--#{k}", (if is_atom(v), do: Atom.to_string(v), else: v)]
-
-  def results_available?() do
-
-  end
 
 end
