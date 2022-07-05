@@ -86,7 +86,7 @@ defmodule EZProfiler.Manager do
            |> Enum.find(&(&1.app == :ezprofiler))
            |> Map.get(:opts)
            |> Keyword.get(:dest)
-    "#{path}/ezprofiler}"
+    "#{path}/"
   end
 
   defp find_ezprofiler(path) do
