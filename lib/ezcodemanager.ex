@@ -30,10 +30,10 @@ defmodule EZProfiler.Manager do
   end
 
   def stop_ezprofiler(), do:
-    EZProfiler.ProfilerOnTarget.stop_profiling(node())
+    Kernel.apply(EZProfiler.ProfilerOnTarget, :stop_profiling, [node()])
 
   def enable_profiling(label \\ :any_label), do:
-    EZProfiler.ProfilerOnTarget.allow_code_profiling(node(), label)
+    Kernel.apply(EZProfiler.ProfilerOnTarget, :allow_code_profiling, [node(), label])
 
   def get_profiling_results(display \\ false) do
     send({:main_event_handler, :ezprofiler@localhost}, {:get_results_file, self()})
