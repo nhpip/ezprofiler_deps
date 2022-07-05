@@ -65,6 +65,7 @@ defmodule EZProfiler.Manager do
     spawn(fn ->
             try do
               System.cmd(System.find_executable(profiler_path), opts)
+              IO.inspect(:started)
               send(pid, {__MODULE__, {:ok, :started}})
             rescue
               e ->
