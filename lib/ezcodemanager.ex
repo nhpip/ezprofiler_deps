@@ -3,6 +3,23 @@ defmodule EZProfiler.Manager do
   @moduledoc """
   A module that provides the ability to perform code profiling programmatically rather than via a CLI.
 
+  Use of this module still requires the `ezprofiler` escript, but it shall be automatically initialized in the background.
+
+  ## Example
+
+        with {:ok, :started} <- EZProfiler.Manager.start_ezprofiler(%EZProfiler.Manager{ezprofiler_path: :deps}),
+           :ok <- EZProfiler.Manager.enable_profiling(),
+           :ok <- EZProfiler.Manager.wait_for_results(),
+           {:ok, filename, results} <- EZProfiler.Manager.get_profiling_results(true)
+        do
+          EZProfiler.Manager.stop_ezprofiler()
+          {:ok, filename, results}
+        else
+          rsp ->
+            EZProfiler.Manager.stop_ezprofiler()
+            rsp
+        end
+
   """
 
   defstruct [
@@ -17,7 +34,28 @@ defmodule EZProfiler.Manager do
   ]
 
   @doc """
-  Start it
+  Starts and configures the `ezprofiler` escript. Takes the `%EZProfiler.Manager{}` struct as configuration.
+
+  Most fields map directly onto the equivalent arguments for starting `ezprofiler`.
+
+  The exception to this is `ezprofiler_path` that takes the following options:
+
+        :system - if `ezprofiler` is defined via the `PATH` env variable.
+        :deps - if `ezprofiler` is included as an application in `mix.ezs`
+        path - a string specifying the full path for `ezprofiler`
+
+  ## Example
+
+        %EZProfiler.Manager{
+          cookie: nil,
+          cpfo: "false",
+          directory: "/tmp/",
+          ezprofiler_path: :system,
+          mf: "_:_",
+          node: nil,
+          profiler: "eprof",
+          sort: "mfa"
+        }
 
   """
   def start_ezprofiler(cfg = %EZProfiler.Manager{} \\ %EZProfiler.Manager{}) do
@@ -34,16 +72,33 @@ defmodule EZProfiler.Manager do
     |> do_start_profiler()
   end
 
+  @doc """
+  Stops the `ezprofiler` escript. The equivalent of hitting `q` in the CLI.
+
+  """
   def stop_ezprofiler(), do:
     Kernel.apply(EZProfiler.ProfilerOnTarget, :stop_profiling, [node()])
 
+  @doc """
+  Enables code profiling. The equivalent of hitting `c` or `c label` in the CLI.
+
+  """
   def enable_profiling(label \\ :any_label), do:
     Kernel.apply(EZProfiler.ProfilerOnTarget, :allow_code_profiling, [node(), label, self()])
 
+  @doc """
+  Disables code profiling. The equivalent of hitting `r` in the CLI.
+
+  """
   def disable_profiling(), do:
     Kernel.apply(EZProfiler.ProfilerOnTarget, :reset_profiling, [node()])
 
-  def wait_for_results(timeout \\ 60000) do
+  @doc """
+  Waits `timeout` seconds (default 60) for code profiling to complete.
+
+  """
+  def wait_for_results(timeout \\ 60) do
+    timeout = timeout * 1000
     receive do
       :results_available -> :ok
     after
@@ -51,6 +106,12 @@ defmodule EZProfiler.Manager do
     end
   end
 
+  @doc """
+  Returns the resulting code profiling results. If the option `display` is set to true it will also output the `stdout`.
+
+  On success it will return the tuple `{:ok, filename, result_string}`
+
+  """
   def get_profiling_results(display \\ false) do
     send({:main_event_handler, :ezprofiler@localhost}, {:get_results_file, self()})
     receive do
