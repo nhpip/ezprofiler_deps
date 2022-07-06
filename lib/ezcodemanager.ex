@@ -1,5 +1,10 @@
 defmodule EZProfiler.Manager do
 
+  @moduledoc """
+  A module that provides the ability to perform code profiling programmatically rather than via a CLI.
+
+  """
+
   defstruct [
     node: nil,
     cookie: nil,
@@ -11,10 +16,11 @@ defmodule EZProfiler.Manager do
     ezprofiler_path: :system
   ]
 
-  def start_ezprofiler(), do:
-    start_ezprofiler(%__MODULE__{})
+  @doc """
+  Start it
 
-  def start_ezprofiler(cfg = %__MODULE__{}) do
+  """
+  def start_ezprofiler(cfg = %__MODULE__{} \\ %__MODULE__{}) do
     Code.ensure_loaded(__MODULE__)
 
     Map.from_struct(cfg)
