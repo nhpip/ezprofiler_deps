@@ -3,7 +3,9 @@ defmodule EZProfiler.CodeProfiler do
   @on_load :cleanup
 
   def cleanup() do
-    IO.inspect({:stub,:code.module_status(__MODULE__)})
+    if :code.module_status(__MODULE__) == :not_loaded, do:
+      :persistent_term.put({__MODULE__, :stub_loaded}, true)
+
     if :code.module_status(__MODULE__) == :modified do
       spawn(fn ->
         Process.sleep(1000)
