@@ -20,7 +20,7 @@ defmodule EZProfiler.Manager do
   Start it
 
   """
-  def start_ezprofiler(cfg = %__MODULE__{} \\ %__MODULE__{}) do
+  def start_ezprofiler(cfg = %EZProfiler.Manager{} \\ %EZProfiler.Manager{}) do
     Code.ensure_loaded(__MODULE__)
 
     Map.from_struct(cfg)
