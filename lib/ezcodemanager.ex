@@ -6,19 +6,21 @@ defmodule EZProfiler.Manager do
   Use of this module still requires the `ezprofiler` escript, but it shall be automatically initialized in the background.
 
   ## Example
-
-        with {:ok, :started} <- EZProfiler.Manager.start_ezprofiler(%EZProfiler.Manager{ezprofiler_path: :deps}),
-           :ok <- EZProfiler.Manager.enable_profiling(),
-           :ok <- EZProfiler.Manager.wait_for_results(),
-           {:ok, filename, results} <- EZProfiler.Manager.get_profiling_results(true)
+        EZProfiler.Manager.start_ezprofiler(%EZProfiler.Manager{ezprofiler_path: :deps})
+        ...
+        ...
+        with :ok <- EZProfiler.Manager.enable_profiling(),
+             :ok <- EZProfiler.Manager.wait_for_results(),
+             {:ok, filename, results} <- EZProfiler.Manager.get_profiling_results(true)
         do
-          EZProfiler.Manager.stop_ezprofiler()
-          {:ok, filename, results}
+            {:ok, filename, results}
         else
           rsp ->
-            EZProfiler.Manager.stop_ezprofiler()
             rsp
         end
+        ...
+        ...
+        EZProfiler.Manager.stop_ezprofiler()
 
   """
   @type display :: boolean()
@@ -26,6 +28,7 @@ defmodule EZProfiler.Manager do
   @type profile_data :: String.t()
   @type wait_time :: Integer.t()
   @type profiling_cfg :: %EZProfiler.Manager{}
+  @type label :: Term.t()
 
   defstruct [
     node: nil,
@@ -89,6 +92,7 @@ defmodule EZProfiler.Manager do
   Enables code profiling. The equivalent of hitting `c` or `c label` in the CLI.
 
   """
+  @spec enable_profiling(label() | none()) :: :ok
   def enable_profiling(label \\ :any_label), do:
     Kernel.apply(EZProfiler.ProfilerOnTarget, :allow_code_profiling, [node(), label, self()])
 
