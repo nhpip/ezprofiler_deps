@@ -3,10 +3,19 @@ defmodule EZProfiler.Manager do
   @moduledoc """
   A module that provides the ability to perform code profiling programmatically rather than via a CLI.
 
-  Use of this module still requires the `ezprofiler` escript, but it shall be automatically initialized in the background.
+  Use of this module still requires the `ezprofiler` escript, but it will be automatically initialized in the background.
+
+  `ezprofiler` can be downloaded from https://github.com/nhpip/ezprofiler or added to `deps` in `mix.exs` along with this package:
+
+      defp deps do
+        [
+          {:ezprofiler, git: "https://github.com/nhpip/ezprofiler.git"},
+          {:ezprofiler_deps, git: "https://github.com/nhpip/ezprofiler_deps.git"}
+        ]
+      end
 
   ## Example
-        EZProfiler.Manager.start_ezprofiler(%EZProfiler.Manager{ezprofiler_path: :deps})
+        EZProfiler.Manager.start_ezprofiler(%EZProfiler.Manager.Configure{ezprofiler_path: :deps})
         ...
         ...
         with :ok <- EZProfiler.Manager.enable_profiling(),
@@ -23,26 +32,42 @@ defmodule EZProfiler.Manager do
         EZProfiler.Manager.stop_ezprofiler()
 
   """
+
+  defmodule Configure do
+
+    @type t :: %EZProfiler.Manager.Configure{node: String.t() | nil,
+                                             cookie: String.t() | nil,
+                                             mf: String.t(),
+                                             directory: String.t(),
+                                             profiler: String.t(),
+                                             sort: String.t(),
+                                             cpfo: String.t() | boolean(),
+                                             ezprofiler_path: String.t() | atom()}
+
+    defstruct [
+      node: nil,
+      cookie: nil,
+      mf: "_:_",
+      directory: "/tmp/",
+      profiler: "eprof",
+      sort: "mfa",
+      cpfo: "false",
+      ezprofiler_path: :system
+    ]
+
+  end
+
+  alias EZProfiler.Manager.Configure
+
   @type display :: boolean()
   @type filename :: String.t()
   @type profile_data :: String.t()
-  @type wait_time :: Integer.t()
-  @type profiling_cfg :: %EZProfiler.Manager{}
-  @type label :: Term.t()
-
-  defstruct [
-    node: nil,
-    cookie: nil,
-    mf: "_:_",
-    directory: "/tmp/",
-    profiler: "eprof",
-    sort: "mfa",
-    cpfo: "false",
-    ezprofiler_path: :system
-  ]
+  @type wait_time :: integer()
+  @type profiling_cfg :: Configure.t()
+  @type label :: atom() | String.t()
 
   @doc """
-  Starts and configures the `ezprofiler` escript. Takes the `%EZProfiler.Manager{}` struct as configuration.
+  Starts and configures the `ezprofiler` escript. Takes the `%EZProfiler.Manager.Configure{}` struct as configuration.
 
   Most fields map directly onto the equivalent arguments for starting `ezprofiler`.
 
@@ -54,7 +79,7 @@ defmodule EZProfiler.Manager do
 
   ## Example
 
-        %EZProfiler.Manager{
+        %EZProfiler.Manager.Configure{
           cookie: nil,
           cpfo: "false",
           directory: "/tmp/",
@@ -67,7 +92,7 @@ defmodule EZProfiler.Manager do
 
   """
   @spec start_ezprofiler(profiling_cfg()) :: {:ok, :started} | {:error, :timeout} | {:error, :not_started}
-  def start_ezprofiler(profiling_cfg = %EZProfiler.Manager{} \\ %EZProfiler.Manager{}) do
+  def start_ezprofiler(profiling_cfg = %Configure{} \\ %Configure{}) do
     Code.ensure_loaded(__MODULE__)
 
     Map.from_struct(profiling_cfg)
