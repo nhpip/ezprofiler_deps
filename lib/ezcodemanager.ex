@@ -21,6 +21,11 @@ defmodule EZProfiler.Manager do
         end
 
   """
+  @type display :: boolean()
+  @type filename :: String.t()
+  @type profile_data :: String.t()
+  @type wait_time :: Integer.t()
+  @type profiling_cfg :: %EZProfiler.Manager{}
 
   defstruct [
     node: nil,
@@ -58,12 +63,13 @@ defmodule EZProfiler.Manager do
         }
 
   """
-  def start_ezprofiler(cfg = %EZProfiler.Manager{} \\ %EZProfiler.Manager{}) do
+  @spec start_ezprofiler(profiling_cfg()) :: {:ok, :started} | {:error, :timeout} | {:error, :not_started}
+  def start_ezprofiler(profiling_cfg = %EZProfiler.Manager{} \\ %EZProfiler.Manager{}) do
     Code.ensure_loaded(__MODULE__)
 
-    Map.from_struct(cfg)
-    |> Map.replace!(:node, (if is_nil(cfg.node), do: node() |> Atom.to_string(), else: cfg.node))
-    |> Map.replace!(:ezprofiler_path, find_ezprofiler(cfg.ezprofiler_path))
+    Map.from_struct(profiling_cfg)
+    |> Map.replace!(:node, (if is_nil(profiling_cfg.node), do: node() |> Atom.to_string(), else: profiling_cfg.node))
+    |> Map.replace!(:ezprofiler_path, find_ezprofiler(profiling_cfg.ezprofiler_path))
     |> Map.to_list()
     |> Enum.filter(&(not is_nil(elem(&1, 1))))
     |> Enum.reduce({nil, []}, fn({:ezprofiler_path, path}, {_, acc}) -> {path, acc};
@@ -97,8 +103,9 @@ defmodule EZProfiler.Manager do
   Waits `timeout` seconds (default 60) for code profiling to complete.
 
   """
-  def wait_for_results(timeout \\ 60) do
-    timeout = timeout * 1000
+  @spec wait_for_results(wait_time() | 60) :: :ok | {:error, :timeout}
+  def wait_for_results(wait_time \\ 60) do
+    timeout = wait_time * 1000
     receive do
       :results_available -> :ok
     after
@@ -112,14 +119,15 @@ defmodule EZProfiler.Manager do
   On success it will return the tuple `{:ok, filename, result_string}`
 
   """
+  @spec get_profiling_results(display() | false) :: {:ok, filename(), profile_data()} | {:error, atom()}
   def get_profiling_results(display \\ false) do
     send({:main_event_handler, :ezprofiler@localhost}, {:get_results_file, self()})
     receive do
       {:profiling_results, filename, results} ->
         if display, do: IO.puts(results)
         {:ok, filename, results}
-      {:no_profiling_results, results} ->
-        {:error, results}
+      {:no_profiling_results, error} ->
+        {:error, error}
     after
       2000 -> {:error, :timeout}
     end
