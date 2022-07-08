@@ -1,7 +1,8 @@
 defmodule EZProfiler.Manager do
 
   @moduledoc """
-  A module that provides the ability to perform code profiling programmatically rather than via a CLI.
+  A module that provides the ability to perform code profiling programmatically within an application rather than via a CLI.
+  This maybe useful in environments where shell access maybe limited. Instead the output can be redirected to a logging subsystem for example.
 
   Use of this module still requires the `ezprofiler` escript, but it will be automatically initialized in the background.
 
@@ -140,6 +141,24 @@ defmodule EZProfiler.Manager do
     after
       timeout -> {:error, :timeout}
     end
+  end
+
+  def wait_for_results_non_block(pid \\ nil, wait_time \\ 60) do
+    pid = if pid, do: pid, else: self()
+    case wait_for_results(0) do
+      :ok -> send(pid, {:ezprofiler, :results_available})
+      _ -> do_wait_for_results_non_block(pid, wait_time)
+    end
+  end
+
+  defp do_wait_for_results_non_block(pid, wait_time) do
+    spawn(fn ->
+              Kernel.apply(EZProfiler.ProfilerOnTarget, :change_code_manager_pid, [node(), self()])
+              case wait_for_results(wait_time) do
+                :ok -> send(pid, {:ezprofiler, :results_available})
+                _ -> send(pid, {:ezprofiler, :timeout})
+              end
+    end)
   end
 
   @doc """
