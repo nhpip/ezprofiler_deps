@@ -1,7 +1,7 @@
 defmodule EZProfiler.Manager do
 
   @moduledoc """
-  A module that provides the ability to perform code profiling programmatically within an application rather than via a CLI.
+  A module that provides the ability to perform code profiling programmatically within an application rather than via the `ezprofiler` CLI.
   This maybe useful in environments where shell access maybe limited. Instead the output can be redirected to a logging subsystem for example.
 
   Use of this module still requires the `ezprofiler` escript, but it will be automatically initialized in the background.
@@ -15,7 +15,14 @@ defmodule EZProfiler.Manager do
         ]
       end
 
-  ## Example
+  This profiling mechanism supports two modes of operation, `synchronous` and `asynchronous`
+
+  In synchronous mode the user starts profiling and then calls a blocking call to wait for the results.
+
+  In asynchronous mode the results are sent as a message, this will be a `handle_info/2` in the case of a `GenServer`
+
+  ## Synchronous Example
+
         EZProfiler.Manager.start_ezprofiler(%EZProfiler.Manager.Configure{ezprofiler_path: :deps})
         ...
         ...
@@ -32,9 +39,38 @@ defmodule EZProfiler.Manager do
         ...
         EZProfiler.Manager.stop_ezprofiler()
 
+  ## Asynchronous Example as a GenServer
+
+        ## Your handle_cast
+        def handle_cast(:start_profiling, state) do
+          EZProfiler.Manager.start_ezprofiler(%EZProfiler.Manager.Configure{ezprofiler_path: :deps})
+          EZProfiler.Manager.enable_profiling()
+          EZProfiler.Manager.wait_for_results_non_block()
+          {:noreply, state}
+        end
+
+        def handle_info({:ezprofiler, :results_available, filename, results}, state) do
+          EZProfiler.Manager.stop_ezprofiler()
+          {:noreply, state}
+        end
+
+        def handle_info({:ezprofiler, :results_available}, state) do
+          {:ok, filename, results} <- EZProfiler.Manager.get_profiling_results(true)
+          EZProfiler.Manager.stop_ezprofiler()
+          {:noreply, state}
+        end
+
+        def handle_info({:ezprofiler, :timeout}, state) do
+          # Ooops
+          EZProfiler.Manager.stop_ezprofiler(
+          {:noreply, state}
+        end
+
   """
 
   defmodule Configure do
+
+    @moduledoc false
 
     @type t :: %EZProfiler.Manager.Configure{node: String.t() | nil,
                                              cookie: String.t() | nil,
@@ -66,6 +102,7 @@ defmodule EZProfiler.Manager do
   @type wait_time :: integer()
   @type profiling_cfg :: Configure.t()
   @type label :: atom() | String.t()
+  @type self :: pid()
 
   @doc """
   Starts and configures the `ezprofiler` escript. Takes the `%EZProfiler.Manager.Configure{}` struct as configuration.
@@ -144,6 +181,21 @@ defmodule EZProfiler.Manager do
     end
   end
 
+  @doc """
+  This is an asynchronous version of `wait_for_results/1`. This will cause a message to be sent to the process id specified as the first argument.
+
+  If no pid is specified the result is sent to `self()`
+
+  Three messages can be received:
+
+      {:ezprofiler, :results_available, filename, results}
+      {:ezprofiler, :results_available}  # Needs to call `get_profiling_results/1`
+      {:ezprofiler, :timeout}
+
+  In the case of a `GenServer` these will be received by `handle_info/2`
+
+  """
+  @spec wait_for_results_non_block(pid() | self(), wait_time() | 60) :: :ok
   def wait_for_results_non_block(pid \\ nil, wait_time \\ 60) do
     pid = if pid, do: pid, else: self()
     case wait_for_results(0) do
@@ -151,17 +203,7 @@ defmodule EZProfiler.Manager do
       {:results_available, file, data} -> send(pid, {:ezprofiler, :results_available, file, data})
       _ -> do_wait_for_results_non_block(pid, wait_time)
     end
-  end
-
-  defp do_wait_for_results_non_block(pid, wait_time) do
-    spawn(fn ->
-              Kernel.apply(EZProfiler.ProfilerOnTarget, :change_code_manager_pid, [node(), self()])
-              case wait_for_results(wait_time) do
-                :ok -> send(pid, {:ezprofiler, :results_available})
-                {:results_available, file, data} -> send(pid, {:ezprofiler, :results_available, file, data})
-                _ -> send(pid, {:ezprofiler, :timeout})
-              end
-    end)
+    :ok
   end
 
   @doc """
@@ -201,6 +243,17 @@ defmodule EZProfiler.Manager do
     after
       5000 -> {:error, :timeout}
     end
+  end
+
+  defp do_wait_for_results_non_block(pid, wait_time) do
+    spawn(fn ->
+      Kernel.apply(EZProfiler.ProfilerOnTarget, :change_code_manager_pid, [node(), self()])
+      case wait_for_results(wait_time) do
+        :ok -> send(pid, {:ezprofiler, :results_available})
+        {:results_available, file, data} -> send(pid, {:ezprofiler, :results_available, file, data})
+        _ -> send(pid, {:ezprofiler, :timeout})
+      end
+    end)
   end
 
   defp find_ezprofiler(:system) do
