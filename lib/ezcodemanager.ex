@@ -51,18 +51,19 @@ defmodule EZProfiler.Manager do
 
         def handle_info({:ezprofiler, :results_available, filename, results}, state) do
           EZProfiler.Manager.stop_ezprofiler()
+          do_something_with_results(filename, results)
           {:noreply, state}
         end
 
         def handle_info({:ezprofiler, :results_available}, state) do
-          {:ok, filename, results} <- EZProfiler.Manager.get_profiling_results(true)
+          {:ok, filename, results} = EZProfiler.Manager.get_profiling_results(true)
           EZProfiler.Manager.stop_ezprofiler()
           {:noreply, state}
         end
 
         def handle_info({:ezprofiler, :timeout}, state) do
           # Ooops
-          EZProfiler.Manager.stop_ezprofiler(
+          EZProfiler.Manager.stop_ezprofiler()
           {:noreply, state}
         end
 
@@ -70,7 +71,10 @@ defmodule EZProfiler.Manager do
 
   defmodule Configure do
 
-    @moduledoc false
+    @moduledoc """
+    The configuration struct for code based code-profiling.
+    
+    """
 
     @type t :: %EZProfiler.Manager.Configure{node: String.t() | nil,
                                              cookie: String.t() | nil,
