@@ -158,7 +158,7 @@ defmodule EZProfiler.Manager do
               Kernel.apply(EZProfiler.ProfilerOnTarget, :change_code_manager_pid, [node(), self()])
               case wait_for_results(wait_time) do
                 :ok -> send(pid, {:ezprofiler, :results_available})
-                {:results_available, file, data} -> send(pid, {:results_available, file, data})
+                {:results_available, file, data} -> send(pid, {:ezprofiler, :results_available, file, data})
                 _ -> send(pid, {:ezprofiler, :timeout})
               end
     end)
