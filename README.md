@@ -1,21 +1,32 @@
-# EzprofilerDeps
+# ezprofiler_deps
 
-**TODO: Add description**
+Provides application-side dependencies for `ezprofiler`:
+
+https://github.com/nhpip/ezprofiler
+
+Specifically it contains a stub module for code profiling:
+
+https://hexdocs.pm/ezprofiler/EZProfiler.CodeProfiler.html
+
+It also provides a module to allow profiling of code from within your application code-base:
+
+https://hexdocs.pm/ezprofiler_deps/EZProfiler.Manager.html
+
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `ezprofiler_deps` to your list of dependencies in `mix.exs`:
+Add `ezprofiler_deps` and `ezprofiler` to your list of dependencies in `mix.exs`:
 
 ```elixir
-def deps do
-  [
-    {:ezprofiler_deps, "~> 0.1.0"}
-  ]
-end
+  defp deps do
+    [
+      {:ezprofiler, git: "https://github.com/nhpip/ezprofiler.git", app: false},
+      {:ezprofiler_deps, git: "https://github.com/nhpip/ezprofiler_deps.git"}
+    ]
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/ezprofiler_deps](https://hexdocs.pm/ezprofiler_deps).
+Please refer to the `hex` docs for more information:
 
+https://hexdocs.pm/ezprofiler/api-reference.html
+
+https://hexdocs.pm/ezprofiler_deps/api-reference.html
