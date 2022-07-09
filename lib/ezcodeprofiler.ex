@@ -1,13 +1,19 @@
 defmodule EZProfiler.CodeProfiler do
   @moduledoc """
-    This module requires the `ezprofiler` escript, see...
+  This module requires the `ezprofiler` escript, see...
 
-      https://github.com/nhpip/ezprofiler.git
-      https://hex.pm/packages/ezprofiler
+  https://hexdocs.pm/ezprofiler/api-reference.html
+
+  https://github.com/nhpip/ezprofiler.git
+
+  https://hex.pm/packages/ezprofiler
 
   Please see documentation for `CodeProfiler` in `ezprofiler`.
-    
+
+  https://hexdocs.pm/ezprofiler/EZProfiler.CodeProfiler.html
+
   """
+
   @on_load :cleanup
 
   @doc false

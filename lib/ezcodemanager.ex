@@ -3,10 +3,13 @@ defmodule EZProfiler.Manager do
   @moduledoc """
   This module requires the `ezprofiler` escript, see...
 
-      https://github.com/nhpip/ezprofiler.git
-      https://hex.pm/packages/ezprofiler
+  https://github.com/nhpip/ezprofiler.git
 
-  A module that provides the ability to perform code profiling programmatically within an application rather than via the `ezprofiler` CLI.
+  https://hex.pm/packages/ezprofiler
+
+  https://hexdocs.pm/ezprofiler/api-reference.html
+
+  This module provides the ability to perform code profiling programmatically within an application rather than via the `ezprofiler` CLI.
   This maybe useful in environments where shell access maybe limited. Instead the output can be redirected to a logging subsystem for example.
 
   Use of this module still requires the `ezprofiler` escript, but it will be automatically initialized in the background.
