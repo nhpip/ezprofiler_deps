@@ -1,4 +1,4 @@
-# ezprofiler-deps
+# ezprofiler_deps
 
 Provides application-side dependencies for `ezprofiler`:
 
