@@ -7,6 +7,7 @@ defmodule EZProfilerDeps.MixProject do
       version: "1.0.0",
       elixir: "~> 1.11",
       start_permanent: Mix.env() == :prod,
+      package: package(),
       description: description(),
       name: "ezprofiler_deps",
       deps: deps()
@@ -23,6 +24,14 @@ defmodule EZProfilerDeps.MixProject do
   def application do
     [
       extra_applications: [:crypto]
+    ]
+  end
+
+  defp package() do
+    [
+      files: ~w(lib mix.exs README* LICENSE*),
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/nhpip/ezprofiler_deps"}
     ]
   end
 
