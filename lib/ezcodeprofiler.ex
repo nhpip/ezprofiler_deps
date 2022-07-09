@@ -1,9 +1,12 @@
 defmodule EZProfiler.CodeProfiler do
   @moduledoc """
+    This module requires the `ezprofiler` escript, see...
+
+      https://github.com/nhpip/ezprofiler.git
+      https://hex.pm/packages/ezprofiler
+
   Please see documentation for `CodeProfiler` in `ezprofiler`.
-
-  https://github.com/nhpip/ezprofiler
-
+    
   """
   @on_load :cleanup
 

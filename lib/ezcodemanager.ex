@@ -1,6 +1,11 @@
 defmodule EZProfiler.Manager do
 
   @moduledoc """
+  This module requires the `ezprofiler` escript, see...
+
+      https://github.com/nhpip/ezprofiler.git
+      https://hex.pm/packages/ezprofiler
+
   A module that provides the ability to perform code profiling programmatically within an application rather than via the `ezprofiler` CLI.
   This maybe useful in environments where shell access maybe limited. Instead the output can be redirected to a logging subsystem for example.
 
@@ -73,7 +78,7 @@ defmodule EZProfiler.Manager do
 
     @moduledoc """
     The configuration struct for code based code-profiling.
-    
+
     """
 
     @type t :: %EZProfiler.Manager.Configure{node: String.t() | nil,
