@@ -7,8 +7,16 @@ defmodule EZProfilerDeps.MixProject do
       version: "1.0.0",
       elixir: "~> 1.11",
       start_permanent: Mix.env() == :prod,
+      description: description(),
+      name: "ezprofiler_deps",
       deps: deps()
     ]
+  end
+
+  defp description() do
+    "Application-side dependancy that works in conjunction with `ezprofiler`. Provides the ability to do code profiling
+     within your application as well as `ezprofiler` management. THe `ezprofiler` escript can be obtained from:
+     https://github.com/nhpip/ezprofiler.git"
   end
 
   # Run "mix help compile.app" to learn about applications.
