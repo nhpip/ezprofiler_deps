@@ -91,6 +91,7 @@ defmodule EZProfiler.Manager do
                                              profiler: String.t(),
                                              sort: String.t(),
                                              cpfo: String.t() | boolean(),
+                                             labeltran: boolean(),
                                              ezprofiler_path: String.t() | atom()}
 
     defstruct [
@@ -101,6 +102,7 @@ defmodule EZProfiler.Manager do
       profiler: "eprof",
       sort: "mfa",
       cpfo: "false",
+      labeltran: "false",
       ezprofiler_path: :system
     ]
 
@@ -113,7 +115,7 @@ defmodule EZProfiler.Manager do
   @type profile_data :: String.t()
   @type wait_time :: integer()
   @type profiling_cfg :: Configure.t()
-  @type label :: atom() | String.t()
+  @type label :: atom() | String.t() | list()
   @type self :: pid()
 
   @doc """
@@ -192,6 +194,30 @@ defmodule EZProfiler.Manager do
       timeout -> {:error, :timeout}
     end
   end
+
+  @doc """
+  If many labels are specified in `enable_profiling/1` setting this to `true` will automatically re-enable profiling
+  after one label has been profiled.
+
+  ## Example
+
+        enable_profiling(["L1", "L2", "L3"])
+
+  L1 is hit and profiled it will be the equivalent of issuing:
+
+        enable_profiling(["L2", "L3"])
+
+  Then `L2` hit:
+
+          enable_profiling(["L3"])
+
+  This permits profiling a flow that may involve messages between a number of processes.
+
+  """
+  @spec allow_label_transition(boolean()) :: :ok
+  def allow_label_transition(allow?) when is_boolean(allow?), do:
+    Kern.apply(EZProfiler.ProfilerOnTarget, :allow_label_transition, [node(), allow?])
+
 
   @doc """
   This is an asynchronous version of `wait_for_results/1`. This will cause a message to be sent to the process id specified as the first argument.
