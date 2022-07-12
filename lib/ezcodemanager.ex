@@ -57,7 +57,7 @@ defmodule EZProfiler.Manager do
           {:noreply, state}
         end
 
-        def handle_info({:ezprofiler, :results_available, filename, results}, state) do
+        def handle_info({:ezprofiler, :results_available, label, filename, results}, state) do
           EZProfiler.Manager.stop_ezprofiler()
           do_something_with_results(filename, results)
           {:noreply, state}
@@ -189,7 +189,7 @@ defmodule EZProfiler.Manager do
     timeout = wait_time * 1000
     receive do
       :results_available -> :ok
-      {:results_available, _file, _data} = msg -> msg
+      {:results_available, _label, _file, _data} = msg -> msg
     after
       timeout -> {:error, :timeout}
     end
@@ -226,7 +226,7 @@ defmodule EZProfiler.Manager do
 
   Three messages can be received:
 
-      {:ezprofiler, :results_available, filename, results}
+      {:ezprofiler, :results_available, label, filename, results}
       {:ezprofiler, :results_available}  # Needs to call `get_profiling_results/1`
       {:ezprofiler, :timeout}
 
@@ -238,7 +238,7 @@ defmodule EZProfiler.Manager do
     pid = if pid, do: pid, else: self()
     case wait_for_results(0) do
       :ok -> send(pid, {:ezprofiler, :results_available})
-      {:results_available, file, data} -> send(pid, {:ezprofiler, :results_available, file, data})
+      {:results_available, label, file, data} -> send(pid, {:ezprofiler, :results_available, label, file, data})
       _ -> do_wait_for_results_non_block(pid, wait_time)
     end
     :ok
@@ -288,7 +288,7 @@ defmodule EZProfiler.Manager do
       Kernel.apply(EZProfiler.ProfilerOnTarget, :change_code_manager_pid, [node(), self()])
       case wait_for_results(wait_time) do
         :ok -> send(pid, {:ezprofiler, :results_available})
-        {:results_available, file, data} -> send(pid, {:ezprofiler, :results_available, file, data})
+        {:results_available, label, file, data} -> send(pid, {:ezprofiler, :results_available, label, file, data})
         _ -> send(pid, {:ezprofiler, :timeout})
       end
     end)
