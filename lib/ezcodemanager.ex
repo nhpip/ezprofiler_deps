@@ -189,6 +189,7 @@ defmodule EZProfiler.Manager do
     timeout = wait_time * 1000
     receive do
       :results_available -> :ok
+      {:results_available, _, _, _} = msg -> msg
     after
       timeout -> {:error, :timeout}
     end
