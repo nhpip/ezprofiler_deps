@@ -189,7 +189,6 @@ defmodule EZProfiler.Manager do
     timeout = wait_time * 1000
     receive do
       :results_available -> :ok
-      {:results_available, _label, _file, _data} = msg -> msg
     after
       timeout -> {:error, :timeout}
     end
@@ -216,7 +215,7 @@ defmodule EZProfiler.Manager do
   """
   @spec allow_label_transition(boolean()) :: :ok
   def allow_label_transition(allow?) when is_boolean(allow?), do:
-    Kern.apply(EZProfiler.ProfilerOnTarget, :allow_label_transition, [node(), allow?])
+    Kernel.apply(EZProfiler.ProfilerOnTarget, :allow_label_transition, [node(), allow?])
 
 
   @doc """
@@ -252,15 +251,12 @@ defmodule EZProfiler.Manager do
   """
   @spec get_profiling_results(display() | false) :: {:ok, filename(), profile_data()} | {:error, atom()}
   def get_profiling_results(display \\ false) do
-    send({:main_event_handler, :ezprofiler@localhost}, {:get_results_file, self()})
-    receive do
-      {:profiling_results, filename, results} ->
+    case Kernel.apply(EZProfiler.ProfilerOnTarget, :get_latest_results, [node()]) do
+      {:profiling_results, results} ->
         if display, do: IO.puts(results)
-        {:ok, filename, results}
+        {:ok, results}
       {:no_profiling_results, error} ->
         {:error, error}
-    after
-      2000 -> {:error, :timeout}
     end
   end
 
