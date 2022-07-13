@@ -254,7 +254,8 @@ defmodule EZProfiler.Manager do
     case Kernel.apply(EZProfiler.ProfilerOnTarget, :get_latest_results, [node()]) do
       {:profiling_results, results} ->
         if display,
-           do: for res <- results, do: IO.puts("#{inspect(res)}")
+           do: for {label, file, res} <- results,
+               do: IO.puts("Label: #{inspect(label)}, File: #{inspect(file)}\n#{res}")
         {:ok, results}
       {:no_profiling_results, error} ->
         {:error, error}
