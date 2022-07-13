@@ -253,7 +253,8 @@ defmodule EZProfiler.Manager do
   def get_profiling_results(display \\ false) do
     case Kernel.apply(EZProfiler.ProfilerOnTarget, :get_latest_results, [node()]) do
       {:profiling_results, results} ->
-        if display, do: IO.puts(results)
+        if display,
+           do: for res <- results, do: IO.puts("#{inspect(res)}")
         {:ok, results}
       {:no_profiling_results, error} ->
         {:error, error}
