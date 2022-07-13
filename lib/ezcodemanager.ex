@@ -317,6 +317,12 @@ defmodule EZProfiler.Manager do
   defp make_opt({:cpfo, _v}), do:
     []
 
+  defp make_opt({:labeltran, v}) when v in [true, "true"], do:
+    ["--labeltran"]
+
+  defp make_opt({:labeltran, _v}), do:
+    []
+
   defp make_opt({k, v}), do:
     ["--#{k}", (if is_atom(v), do: Atom.to_string(v), else: v)]
 
