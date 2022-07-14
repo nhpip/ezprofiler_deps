@@ -164,7 +164,7 @@ defmodule EZProfiler.Manager do
   """
   def stop_ezprofiler() do
     Kernel.apply(EZProfiler.ProfilerOnTarget, :stop_profiling, [node()])
-    do_stop_ezprofiler(:persistent_term.get(:ezprofiler_pid, nil), 30)
+    do_stop_ezprofiler(:persistent_term.get(:ezprofiler_pid, nil), 30) |> IO.inspect()
   end
 
   defp do_stop_ezprofiler(_pid, 0), do:
