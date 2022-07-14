@@ -167,18 +167,6 @@ defmodule EZProfiler.Manager do
     do_stop_ezprofiler(length(Node.list()), 3)
   end
 
-  defp do_stop_ezprofiler(_nodes, 0), do:
-    :ok
-
-  defp do_stop_ezprofiler(0, _), do:
-    :ok
-
-  defp do_stop_ezprofiler(nodes, count) do
-    Process.sleep(1000)
-    length(Node.list()) != nodes || do_stop_ezprofiler(nodes, count - 1)
-  end
-
-
   @doc """
   Enables code profiling. The equivalent of hitting `c` or `c label` in the CLI.
 
@@ -345,5 +333,17 @@ defmodule EZProfiler.Manager do
   defp random_filename() do
     for _ <- 1..10, into: "", do: <<Enum.at('abcdefghijklmnopqrstuvwxyz', :crypto.rand_uniform(0, 26))>>
   end
+
+  defp do_stop_ezprofiler(_nodes, 0), do:
+    :ok
+
+  defp do_stop_ezprofiler(0, _), do:
+    :ok
+
+  defp do_stop_ezprofiler(nodes, count) do
+    Process.sleep(1000)
+    length(Node.list()) != nodes || do_stop_ezprofiler(nodes, count - 1)
+  end
+
 
 end
