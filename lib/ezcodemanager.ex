@@ -175,7 +175,7 @@ defmodule EZProfiler.Manager do
 
   defp do_stop_ezprofiler(pid, count) do
     Process.sleep(100)
-    IO.inspect(:xxxxx)
+    IO.inspect(Process.info(pid))
     ! Process.info(pid) || do_stop_ezprofiler(pid, count - 1)
   end
 
