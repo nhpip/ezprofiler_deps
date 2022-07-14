@@ -189,7 +189,7 @@ defmodule EZProfiler.Manager do
     timeout = wait_time * 1000
     receive do
       :results_available -> :ok
-     # {:results_available, _, _, _} = msg -> msg
+      :pseudo_results_available -> :ok
     after
       timeout -> {:error, :timeout}
     end
@@ -237,13 +237,6 @@ defmodule EZProfiler.Manager do
   def wait_for_results_non_block(pid \\ nil, wait_time \\ 60) do
     pid = if pid, do: pid, else: self()
     Kernel.apply(EZProfiler.ProfilerOnTarget, :change_code_manager_pid, [node(), pid])
-
-  #  case wait_for_results(0) do
-  #    :ok -> send(pid, {:ezprofiler, :results_available})
-  #    {:results_available, label, file, data} -> send(pid, {:ezprofiler, :results_available, label, file, data})
-  #    _ -> do_wait_for_results_non_block(pid, wait_time)
-  #  end
-    :ok
   end
 
   @doc """
@@ -281,27 +274,6 @@ defmodule EZProfiler.Manager do
       {__MODULE__, rsp} -> rsp
     after
       5000 -> {:error, :timeout}
-    end
-  end
-
-  defp do_wait_for_results_non_block(pid, wait_time) do
-    spawn(fn ->
-      Kernel.apply(EZProfiler.ProfilerOnTarget, :change_code_manager_pid, [node(), self()])
-      do_wait_for_results_non_block0(pid, wait_time)
-    end)
-  end
-
-  defp do_wait_for_results_non_block0(pid, wait_time) do
-    case wait_for_results(wait_time) do
-      :ok ->
-        send(pid, {:ezprofiler, :results_available})
-        do_wait_for_results_non_block0(pid, wait_time)
-      {:results_available, label, file, data} ->
-        send(pid, {:ezprofiler, :results_available, label, file, data})
-        do_wait_for_results_non_block0(pid, wait_time)
-      _ ->
-        send(pid, {:ezprofiler, :timeout})
-        do_wait_for_results_non_block0(pid, wait_time)
     end
   end
 
