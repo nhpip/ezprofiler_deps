@@ -164,20 +164,18 @@ defmodule EZProfiler.Manager do
   """
   def stop_ezprofiler() do
     Kernel.apply(EZProfiler.ProfilerOnTarget, :stop_profiling, [node()])
-    do_stop_ezprofiler(:persistent_term.get(:ezprofiler_pid, nil), 30) |> IO.inspect()
+    do_stop_ezprofiler(length(Node.list()), 30) |> IO.inspect()
   end
 
-  defp do_stop_ezprofiler(_pid, 0), do:
+  defp do_stop_ezprofiler(_nodes, 0), do:
     :ok
 
-  defp do_stop_ezprofiler(nil, _), do:
+  defp do_stop_ezprofiler(0, _), do:
     :ok
 
-  defp do_stop_ezprofiler(pid, count) do
-    IO.inspect(Process.info(pid))
+  defp do_stop_ezprofiler(nodes, count) do
     Process.sleep(100)
-    IO.inspect(Process.info(pid))
-    ! Process.info(pid) || do_stop_ezprofiler(pid, count - 1)
+    length(Node.list()) != nodes || do_stop_ezprofiler(nodes, count - 1)
   end
 
 
