@@ -164,7 +164,7 @@ defmodule EZProfiler.Manager do
   """
   def stop_ezprofiler() do
     Kernel.apply(EZProfiler.ProfilerOnTarget, :stop_profiling, [node()])
-    do_stop_ezprofiler(length(Node.list()), 30) |> IO.inspect()
+    do_stop_ezprofiler(length(Node.list()), 3)
   end
 
   defp do_stop_ezprofiler(_nodes, 0), do:
@@ -174,7 +174,7 @@ defmodule EZProfiler.Manager do
     :ok
 
   defp do_stop_ezprofiler(nodes, count) do
-    Process.sleep(100)
+    Process.sleep(1000)
     length(Node.list()) != nodes || do_stop_ezprofiler(nodes, count - 1)
   end
 
