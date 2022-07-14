@@ -162,8 +162,10 @@ defmodule EZProfiler.Manager do
   Stops the `ezprofiler` escript. The equivalent of hitting `q` in the CLI.
 
   """
-  def stop_ezprofiler(), do:
+  def stop_ezprofiler() do
     Kernel.apply(EZProfiler.ProfilerOnTarget, :stop_profiling, [node()])
+    if (pid = :persistent_term.get(:ezprofiler_pid, nil)), do: Process.exit(pid, :kill)
+  end
 
   @doc """
   Enables code profiling. The equivalent of hitting `c` or `c label` in the CLI.
@@ -260,7 +262,7 @@ defmodule EZProfiler.Manager do
 
   defp do_start_profiler({profiler_path, opts}) do
     pid = self()
-    spawn(fn ->
+    ezpid = spawn(fn ->
             try do
               filename = "/tmp/#{random_filename()}"
               spawn(fn -> wait_for_start(pid, filename) end)
@@ -271,9 +273,12 @@ defmodule EZProfiler.Manager do
             end
     end)
     receive do
-      {__MODULE__, rsp} -> rsp
+      {__MODULE__, rsp} ->
+        :persistent_term.put(:ezprofiler_pid, ezpid)
+        rsp
     after
-      5000 -> {:error, :timeout}
+      5000 ->
+        {:error, :timeout}
     end
   end
 
