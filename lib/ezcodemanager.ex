@@ -164,11 +164,20 @@ defmodule EZProfiler.Manager do
   """
   def stop_ezprofiler() do
     Kernel.apply(EZProfiler.ProfilerOnTarget, :stop_profiling, [node()])
-    IO.inspect(Process.info(:persistent_term.get(:ezprofiler_pid, nil)))
-    Process.sleep(1000)
-    IO.inspect(Process.info(:persistent_term.get(:ezprofiler_pid, nil)))
-    #if (pid = :persistent_term.get(:ezprofiler_pid, nil)), do: Process.exit(pid, :kill)
+    do_stop_ezprofiler(:persistent_term.get(:ezprofiler_pid, nil), 0)
   end
+
+  defp do_stop_ezprofiler(_pid, 0), do:
+    :ok
+
+  defp do_stop_ezprofiler(nil, _), do:
+    :ok
+
+  defp do_stop_ezprofiler(pid, count) do
+    Process.sleep(100)
+    ! Process.info(pid) || do_stop_ezprofiler(pid, count - 1)
+  end
+
 
   @doc """
   Enables code profiling. The equivalent of hitting `c` or `c label` in the CLI.
