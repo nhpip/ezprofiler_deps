@@ -158,7 +158,7 @@ defmodule EZProfiler.Manager do
   """
   def stop_ezprofiler() do
     if not is_nil(Process.whereis(:ezprofiler_main)) do
-        Kernel.apply(EZProfiler.ProfilerOnTarget, :stop_profiling, [node()])
+        do_apply(EZProfiler.ProfilerOnTarget, :stop_profiling, [node()])
         do_stop_ezprofiler(length(Node.list()), 3)
         if is_nil(Process.whereis(:ezprofiler_main)),
           do: {:ok, :stopped},
@@ -181,7 +181,7 @@ defmodule EZProfiler.Manager do
 
   """
   def disable_profiling(), do:
-    Kernel.apply(EZProfiler.ProfilerOnTarget, :reset_profiling, [node()])
+    do_apply(EZProfiler.ProfilerOnTarget, :reset_profiling, [node()])
 
   @doc """
   Waits `timeout` seconds (default 60) for code profiling to complete.
@@ -218,7 +218,7 @@ defmodule EZProfiler.Manager do
   """
   @spec allow_label_transition(boolean()) :: :ok
   def allow_label_transition(allow?) when is_boolean(allow?), do:
-    Kernel.apply(EZProfiler.ProfilerOnTarget, :allow_label_transition, [node(), allow?])
+    do_apply(EZProfiler.ProfilerOnTarget, :allow_label_transition, [node(), allow?])
 
 
   @doc """
@@ -238,7 +238,7 @@ defmodule EZProfiler.Manager do
   @spec wait_for_results_non_block(pid() | self()) :: :ok
   def wait_for_results_non_block(pid \\ nil) do
     pid = if pid, do: pid, else: self()
-    Kernel.apply(EZProfiler.ProfilerOnTarget, :change_code_manager_pid, [node(), pid])
+    do_apply(EZProfiler.ProfilerOnTarget, :change_code_manager_pid, [node(), pid])
   end
 
   @doc """
@@ -249,7 +249,7 @@ defmodule EZProfiler.Manager do
   """
   @spec get_profiling_results(display() | false) :: {:ok, filename(), profile_data()} | {:error, atom()}
   def get_profiling_results(display \\ false) do
-    case Kernel.apply(EZProfiler.ProfilerOnTarget, :get_latest_results, [node()]) do
+    case do_apply(EZProfiler.ProfilerOnTarget, :get_latest_results, [node()]) do
       {:profiling_results, results} ->
         if display,
            do: for {_label, file, res} <- results,
@@ -257,6 +257,8 @@ defmodule EZProfiler.Manager do
         {:ok, results}
       {:no_profiling_results, error} ->
         {:error, error}
+      rsp ->
+        rsp
     end
   end
 
@@ -358,7 +360,7 @@ defmodule EZProfiler.Manager do
     Process.sleep(1000)
     length(Node.list()) != nodes || do_stop_ezprofiler(nodes, count - 1)
   end
-  
+
   defp do_apply(mod, fun, args) do
     if not is_nil(Process.whereis(:ezprofiler_main)),
        do: Kernel.apply(mod, fun, args),
