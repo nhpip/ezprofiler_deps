@@ -274,7 +274,6 @@ defmodule EZProfiler.Manager do
               Process.register(self(), :ezprofiler_main)
               System.cmd(System.find_executable(profiler_path), ["--inline", filename | opts])
               File.rm(filename)
-              IO.inspect(:doooooooooon)
             rescue
               e ->
                 send(pid, {__MODULE__, {:error, e}})
