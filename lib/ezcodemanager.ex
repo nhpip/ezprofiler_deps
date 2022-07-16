@@ -174,7 +174,7 @@ defmodule EZProfiler.Manager do
   """
   @spec enable_profiling(label() | none()) :: :ok
   def enable_profiling(label \\ :any_label), do:
-    Kernel.apply(EZProfiler.ProfilerOnTarget, :allow_code_profiling, [node(), label, self()])
+    do_apply(EZProfiler.ProfilerOnTarget, :allow_code_profiling, [node(), label, self()])
 
   @doc """
   Disables code profiling. The equivalent of hitting `r` in the CLI.
@@ -358,6 +358,11 @@ defmodule EZProfiler.Manager do
     Process.sleep(1000)
     length(Node.list()) != nodes || do_stop_ezprofiler(nodes, count - 1)
   end
-
+  
+  defp do_apply(mod, fun, args) do
+    if not is_nil(Process.whereis(:ezprofiler_main)),
+       do: Kernel.apply(mod, fun, args),
+       else: {:error, :not_running}
+  end
 
 end
