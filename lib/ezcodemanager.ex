@@ -157,11 +157,15 @@ defmodule EZProfiler.Manager do
 
   """
   def stop_ezprofiler() do
-    Kernel.apply(EZProfiler.ProfilerOnTarget, :stop_profiling, [node()])
-    do_stop_ezprofiler(length(Node.list()), 3)
-    if is_nil(Process.whereis(:ezprofiler_main)),
-       do: {:ok, :stopped},
-       else: {:error, :not_stopped}
+    if not is_nil(Process.whereis(:ezprofiler_main)) do
+        Kernel.apply(EZProfiler.ProfilerOnTarget, :stop_profiling, [node()])
+        do_stop_ezprofiler(length(Node.list()), 3)
+        if is_nil(Process.whereis(:ezprofiler_main)),
+          do: {:ok, :stopped},
+          else: {:error, :not_stopped}
+    else
+      {:error, :not_running}
+    end
   end
 
   @doc """
