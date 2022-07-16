@@ -186,14 +186,13 @@ defmodule EZProfiler.Manager do
   Waits `timeout` seconds (default 60) for code profiling to complete.
 
   """
-  @spec wait_for_results(wait_time() | 60) :: :ok | {:error, :timeout}
-  def wait_for_results(wait_time \\ 60) do
-    timeout = wait_time * 1000
+  @spec wait_for_results(wait_time() | 5000) :: :ok | {:error, :timeout}
+  def wait_for_results(wait_time \\ 5000) do
     receive do
       :results_available -> :ok
       :pseudo_results_available -> :ok
     after
-      timeout -> {:error, :timeout}
+      wait_time -> {:error, :timeout}
     end
   end
 
@@ -235,8 +234,8 @@ defmodule EZProfiler.Manager do
   In the case of a `GenServer` these will be received by `handle_info/2`
 
   """
-  @spec wait_for_results_non_block(pid() | self(), wait_time() | 60) :: :ok
-  def wait_for_results_non_block(pid \\ nil, wait_time \\ 60) do
+  @spec wait_for_results_non_block(pid() | self()) :: :ok
+  def wait_for_results_non_block(pid \\ nil) do
     pid = if pid, do: pid, else: self()
     Kernel.apply(EZProfiler.ProfilerOnTarget, :change_code_manager_pid, [node(), pid])
   end
@@ -266,7 +265,10 @@ defmodule EZProfiler.Manager do
             try do
               filename = "/tmp/#{random_filename()}"
               spawn(fn -> wait_for_start(pid, filename) end)
+              Process.register(self(), :ezprofiler_main)
               System.cmd(System.find_executable(profiler_path), ["--inline", filename | opts])
+              File.rm(filename)
+              IO.inspect(:doooooooooon)
             rescue
               e ->
                 send(pid, {__MODULE__, {:error, e}})
