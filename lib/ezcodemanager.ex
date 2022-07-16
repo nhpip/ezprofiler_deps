@@ -149,7 +149,7 @@ defmodule EZProfiler.Manager do
 
     if is_nil(Process.whereis(:ezprofiler_main)),
       do: do_start_profiler(profiling_cfg),
-      else: {:error, :allredy_started}
+      else: {:error, :already_started}
   end
 
   @doc """
