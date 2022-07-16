@@ -147,15 +147,9 @@ defmodule EZProfiler.Manager do
   def start_ezprofiler(profiling_cfg = %Configure{} \\ %Configure{}) do
     Code.ensure_loaded(__MODULE__)
 
-    Map.from_struct(profiling_cfg)
-    |> Map.replace!(:node, (if is_nil(profiling_cfg.node), do: node() |> Atom.to_string(), else: profiling_cfg.node))
-    |> Map.replace!(:ezprofiler_path, find_ezprofiler(profiling_cfg.ezprofiler_path))
-    |> Map.to_list()
-    |> Enum.filter(&(not is_nil(elem(&1, 1))))
-    |> Enum.reduce({nil, []}, fn({:ezprofiler_path, path}, {_, acc}) -> {path, acc};
-                                (opt, {path, opts}) -> {path, [make_opt(opt) | opts]} end)
-    |> flatten()
-    |> do_start_profiler()
+    if is_nil(Process.whereis(:ezprofiler_main)),
+      do: do_start_profiler(profiling_cfg),
+      else: {:error, :allredy_started}
   end
 
   @doc """
@@ -259,7 +253,19 @@ defmodule EZProfiler.Manager do
     end
   end
 
-  defp do_start_profiler({profiler_path, opts}) do
+  defp do_start_profiler(profiling_cfg) do
+    Map.from_struct(profiling_cfg)
+    |> Map.replace!(:node, (if is_nil(profiling_cfg.node), do: node() |> Atom.to_string(), else: profiling_cfg.node))
+    |> Map.replace!(:ezprofiler_path, find_ezprofiler(profiling_cfg.ezprofiler_path))
+    |> Map.to_list()
+    |> Enum.filter(&(not is_nil(elem(&1, 1))))
+    |> Enum.reduce({nil, []}, fn({:ezprofiler_path, path}, {_, acc}) -> {path, acc};
+                              (opt, {path, opts}) -> {path, [make_opt(opt) | opts]} end)
+    |> flatten()
+    |> do_start_profiler0()
+  end
+
+  defp do_start_profiler0({profiler_path, opts}) do
     pid = self()
     ezpid = spawn(fn ->
             try do
