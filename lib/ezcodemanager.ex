@@ -29,16 +29,25 @@ defmodule EZProfiler.Manager do
 
   In asynchronous mode the results are sent as a message, this will be a `handle_info/2` in the case of a `GenServer`
 
+  The results are a `map` or list of maps that contains:
+
+        %{type: type,            # One of :normal or :pseudo
+          label: label,          # The label used by this run
+          filename: filename,    # The results file
+          profiler: profiler,    # "eprof, "fprof", "cprof" or :no_profiler in case of pseudo
+          results_data: results  # String containing the results
+        }
+
   ## Synchronous Example
 
         EZProfiler.Manager.start_ezprofiler(%EZProfiler.Manager.Configure{ezprofiler_path: :deps})
         ...
         ...
         with :ok <- EZProfiler.Manager.enable_profiling(),
-             :ok <- EZProfiler.Manager.wait_for_results(),
-             {:ok, filename, results} <- EZProfiler.Manager.get_profiling_results(true)
+             {:ok, run_results} <- EZProfiler.Manager.wait_for_results(),
+             {:ok, results} <- EZProfiler.Manager.get_profiling_results(true)
         do
-            {:ok, filename, results}
+            {:ok, results}
         else
           rsp ->
             rsp
@@ -46,6 +55,9 @@ defmodule EZProfiler.Manager do
         ...
         ...
         EZProfiler.Manager.stop_ezprofiler()
+
+  The function `wait_for_results/1` will return the results of that current profiling run, whereas `get_profiling_results/1` returns a list of
+  results for that entire run (e.g. if label transition is selected). This is cleared if `enable_profiling/1` or `disable_profiling/0` is called
 
   ## Asynchronous Example as a GenServer
 
@@ -57,15 +69,9 @@ defmodule EZProfiler.Manager do
           {:noreply, state}
         end
 
-        def handle_info({:ezprofiler, :results_available, label, filename, results}, state) do
-          EZProfiler.Manager.stop_ezprofiler()
-          do_something_with_results(filename, results)
-          {:noreply, state}
-        end
-
-        def handle_info({:ezprofiler, :results_available}, state) do
-          {:ok, filename, results} = EZProfiler.Manager.get_profiling_results(true)
-          EZProfiler.Manager.stop_ezprofiler()
+        def handle_info({:ezprofiler_results, results}, state) do
+          EZProfiler.Manager.stop_ezprofiler()  # Don't have to stop if you don't want to
+          do_something_with_results(results.type, results.filename, results.results_data)
           {:noreply, state}
         end
 
@@ -116,7 +122,10 @@ defmodule EZProfiler.Manager do
   @type wait_time :: integer()
   @type profiling_cfg :: Configure.t()
   @type label :: atom() | String.t() | list()
+  @type labels :: list(label())
   @type self :: pid()
+  @type result :: map()
+  @type results :: list(map())
 
   @doc """
   Starts and configures the `ezprofiler` escript. Takes the `%EZProfiler.Manager.Configure{}` struct as configuration.
@@ -139,23 +148,25 @@ defmodule EZProfiler.Manager do
           mf: "_:_",
           node: nil,
           profiler: "eprof",
+          labeltran: true,
           sort: "mfa"
         }
 
   """
-  @spec start_ezprofiler(profiling_cfg()) :: {:ok, :started} | {:error, :timeout} | {:error, :not_started}
+  @spec start_ezprofiler(profiling_cfg()) :: {:ok, :started} | {:error, :timeout} | {:error, :not_started} | {:error, :already_running}
   def start_ezprofiler(profiling_cfg = %Configure{} \\ %Configure{}) do
     Code.ensure_loaded(__MODULE__)
 
     if is_nil(Process.whereis(:ezprofiler_main)),
       do: do_start_profiler(profiling_cfg),
-      else: {:error, :already_started}
+      else: {:error, :already_running}
   end
 
   @doc """
   Stops the `ezprofiler` escript. The equivalent of hitting `q` in the CLI.
 
   """
+  @spec stop_ezprofiler() :: {:ok, :stopped} | {:error, :not_stopped} | {:error, :not_running}
   def stop_ezprofiler() do
     if not is_nil(Process.whereis(:ezprofiler_main)) do
         do_apply(EZProfiler.ProfilerOnTarget, :stop_profiling, [node()])
@@ -169,10 +180,10 @@ defmodule EZProfiler.Manager do
   end
 
   @doc """
-  Enables code profiling. The equivalent of hitting `c` or `c label` in the CLI.
+  Enables code profiling. The equivalent of hitting `c` or `c label` in the CLI. A single label, or list of labels can be specified
 
   """
-  @spec enable_profiling(label() | none()) :: :ok
+  @spec enable_profiling(label() | labels() | none()) :: :ok
   def enable_profiling(label \\ :any_label), do:
     do_apply(EZProfiler.ProfilerOnTarget, :allow_code_profiling, [node(), label, self()])
 
@@ -180,14 +191,22 @@ defmodule EZProfiler.Manager do
   Disables code profiling. The equivalent of hitting `r` in the CLI.
 
   """
+  @spec disable_profiling() :: :ok
   def disable_profiling(), do:
     do_apply(EZProfiler.ProfilerOnTarget, :reset_profiling, [node()])
 
   @doc """
-  Waits `timeout` seconds (default 60) for code profiling to complete.
+  Waits `timeout` milliseconds (default 5000) for any results and returns the result as a map.
+
+        %{type: type,            # One of :normal or :pseudo
+          label: label,          # The label used by this run
+          filename: filename,    # The results file
+          profiler: profiler,    # "eprof, "fprof", "cprof" or :no_profiler in case of pseudo
+          results_data: results  # String containing the results
+        }
 
   """
-  @spec wait_for_results(wait_time() | 5000) :: :ok | {:error, :timeout}
+  @spec wait_for_results(wait_time() | 5000) :: {:ok, result()} | {:error, :timeout}
   def wait_for_results(wait_time \\ 5000) do
     receive do
       {:results_available, results} -> {:ok, results}
@@ -227,9 +246,18 @@ defmodule EZProfiler.Manager do
 
   Three messages can be received:
 
-      {:ezprofiler, :results_available, label, filename, results}
-      {:ezprofiler, :results_available}  # Needs to call `get_profiling_results/1`
+      {:ezprofiler_results, result}
       {:ezprofiler, :timeout}
+
+
+  Result is a map:
+
+          %{type: type,          # One of :normal or :pseudo
+          label: label,          # The label used by this run
+          filename: filename,    # The results file
+          profiler: profiler,    # "eprof, "fprof", "cprof" or :no_profiler in case of pseudo
+          results_data: results  # String containing the results
+        }
 
   In the case of a `GenServer` these will be received by `handle_info/2`
 
@@ -243,16 +271,16 @@ defmodule EZProfiler.Manager do
   @doc """
   Returns the resulting code profiling results. If the option `display` is set to true it will also output the `stdout`.
 
-  On success it will return the tuple `{:ok, filename, result_string}`
+  On success it will return the tuple `{:ok, results}`
 
   """
-  @spec get_profiling_results(display() | false) :: {:ok, filename(), profile_data()} | {:error, atom()}
+  @spec get_profiling_results(display() | false) :: {:ok, results()} | {:error, atom()}
   def get_profiling_results(display \\ false) do
     case do_apply(EZProfiler.ProfilerOnTarget, :get_latest_results, [node()]) do
       {:profiling_results, results} ->
         if display,
-           do: for {_label, file, res} <- results,
-               do: IO.puts("\nFile: #{inspect(file)}\n#{res}")
+           do: for %{label: label, filename: file, type: type, results_data: result_str} <- results,
+               do: IO.puts("\nFile: #{inspect(file)}, Label: #{inspect(label)}, Type: #{inspect(type)}\n#{result_str}")
         {:ok, results}
       {:no_profiling_results, error} ->
         {:error, error}
