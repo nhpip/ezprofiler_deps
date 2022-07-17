@@ -190,8 +190,7 @@ defmodule EZProfiler.Manager do
   @spec wait_for_results(wait_time() | 5000) :: :ok | {:error, :timeout}
   def wait_for_results(wait_time \\ 5000) do
     receive do
-      :results_available -> :ok
-      :pseudo_results_available -> :ok
+      {:results_available, results} -> {:ok, results}
     after
       wait_time -> {:error, :timeout}
     end
