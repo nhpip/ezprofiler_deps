@@ -221,15 +221,15 @@ defmodule EZProfiler.Manager do
 
   ## Example
 
-        enable_profiling(["L1", "L2", "L3"])
+        EZProfiler.Manager.enable_profiling(["L1", "L2", "L3"])
 
-  L1 is hit and profiled it will be the equivalent of issuing:
+  L1 is hit and profiled the next profile will be the equivalent of issuing:
 
-        enable_profiling(["L2", "L3"])
+        EZProfiler.Manager.enable_profiling(["L2", "L3"])
 
   Then `L2` hit:
 
-          enable_profiling(["L3"])
+        EZProfiler.Manager.enable_profiling(["L3"])
 
   This permits profiling a flow that may involve messages between a number of processes.
 
@@ -240,7 +240,7 @@ defmodule EZProfiler.Manager do
 
 
   @doc """
-  This is an asynchronous version of `wait_for_results/1`. This will cause a message to be sent to the process id specified as the first argument.
+  This is an asynchronous version of `EZProfiler.Manager.wait_for_results/1`. This will cause a message to be sent to the process id specified as the first argument.
 
   If no pid is specified the result is sent to `self()`
 
