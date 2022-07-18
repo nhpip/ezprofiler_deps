@@ -81,6 +81,24 @@ defmodule EZProfiler.Manager do
           {:noreply, state}
         end
 
+  ## Labels
+  When using `EZProfiler.Manager.enable_profiling/1` either a single label or a list of labels can be specified. In the case of a list there are two modes of operation,
+  label transition (`labeltran`) `true` or label transition `false` (the default). The behavior is as follows:
+
+  #### Label Transition `false`
+  This effectively a request to profile *one-of* those labels. The first matching label is selected for profiling and the rest of the labels are ignored.
+
+  #### Label Transition `true`
+  In this case all specified labels shall be profiled sequentially (order doesn't matter), effectively the profiler automatically re-enables profiling after a label match.
+  A label that matches and is profiled, will removed from the list of labels to be profiled next and profiling is re-enabled for the remaining labels.
+  This allows profiling to follow the flow of code through your application, even if processes are switched. It is important to note that the rule of only one process
+  at a time can be profiled still exists, so ideally they should be sequential.
+
+  However, if there are sections of want to be profiled code that overlap in time `ezprofiler` performs `pseudo profiling` where `ezprofiler` will at least calculate and
+  display how long the profiled code took to execute.
+
+  Use `allow_label_transition/1` to configure label transition.
+
   """
 
   defmodule Configure do
