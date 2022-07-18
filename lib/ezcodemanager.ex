@@ -75,6 +75,7 @@ defmodule EZProfiler.Manager do
           {:noreply, state}
         end
 
+        ## Change timeout with `EZProfiler.Manager.profiling_time/1`
         def handle_info({:ezprofiler, :timeout}, state) do
           # Ooops
           EZProfiler.Manager.stop_ezprofiler()
@@ -138,6 +139,7 @@ defmodule EZProfiler.Manager do
   @type filename :: String.t()
   @type profile_data :: String.t()
   @type wait_time :: integer()
+  @type profiling_time() :: integer()
   @type profiling_cfg :: Configure.t()
   @type label :: atom() | String.t() | list()
   @type labels :: list(label())
@@ -224,9 +226,10 @@ defmodule EZProfiler.Manager do
         }
 
   """
-  @spec wait_for_results(wait_time() | 5000) :: {:ok, result()} | {:error, :timeout}
+  @spec wait_for_results(wait_time() | 5000) :: {:ok, result()} | {:error, :timeout} | {:error, :ezprofiler_timeout}
   def wait_for_results(wait_time \\ 5000) do
     receive do
+      {:ezprofiler, :timeout} -> {:error, :ezprofiler_timeout}
       {:results_available, results} -> {:ok, results}
     after
       wait_time -> {:error, :timeout}
@@ -255,6 +258,16 @@ defmodule EZProfiler.Manager do
   @spec allow_label_transition(boolean()) :: :ok
   def allow_label_transition(allow?) when is_boolean(allow?), do:
     do_apply(EZProfiler.ProfilerOnTarget, :allow_label_transition, [node(), allow?])
+
+  @doc """
+  Specifies how long we wait for profiling to actually start upon issuing `enable_profiling/1`.
+
+  Time is specified in milliseconds
+
+  """
+  @spec profiling_time(profiling_time()) :: :ok
+  def profiling_time(time), do:
+    do_apply(EZProfiler.ProfilerOnTarget, :profiling_time, [node(), time])
 
 
   @doc """
