@@ -177,7 +177,7 @@ defmodule EZProfiler.Manager do
   def start_ezprofiler(profiling_cfg = %Configure{} \\ %Configure{}) do
     Code.ensure_loaded(__MODULE__)
 
-    if is_nil(Process.whereis(:ezprofiler_main)),
+    if is_nil(Process.whereis(:ezprofiler_main)) && is_nil(Process.whereis(:cstop_profiler)),
       do: do_start_profiler(profiling_cfg),
       else: {:error, :already_running}
   end
@@ -262,7 +262,7 @@ defmodule EZProfiler.Manager do
   @doc """
   Specifies how long we wait for profiling to actually start upon issuing `enable_profiling/1`.
 
-  Time is specified in milliseconds
+  Time is specified in milliseconds. Call this before `enable_profiling/1`
 
   """
   @spec profiling_time(profiling_time()) :: :ok
@@ -420,7 +420,7 @@ defmodule EZProfiler.Manager do
   end
 
   defp do_apply(mod, fun, args) do
-    if not is_nil(Process.whereis(:ezprofiler_main)),
+    if not is_nil(Process.whereis(:ezprofiler_main)) || not is_nil(Process.whereis(:cstop_profiler)),
        do: Kernel.apply(mod, fun, args),
        else: {:error, :not_running}
   end
