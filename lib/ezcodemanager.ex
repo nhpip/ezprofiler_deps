@@ -76,7 +76,14 @@ defmodule EZProfiler.Manager do
         end
 
         ## Change timeout with `EZProfiler.Manager.profiling_time/1`
-        def handle_info({:ezprofiler, :timeout}, state) do
+        def handle_info({:ezprofiler, :profiling_timeout}, state) do
+          # Ooops
+          EZProfiler.Manager.stop_ezprofiler()
+          {:noreply, state}
+        end
+
+        ## Change timeout with `EZProfiler.Manager.profiling_start_wait/1`
+        def handle_info({:ezprofiler, :start_profiling_timeout}, state) do
           # Ooops
           EZProfiler.Manager.stop_ezprofiler()
           {:noreply, state}
@@ -226,10 +233,11 @@ defmodule EZProfiler.Manager do
         }
 
   """
-  @spec wait_for_results(wait_time() | 5000) :: {:ok, result()} | {:error, :timeout} | {:error, :ezprofiler_timeout}
+  @spec wait_for_results(wait_time() | 5000) :: {:ok, result()} | {:error, :timeout} | {:error, :profiling_timeout} | {:error, :start_profiling_timeout}
   def wait_for_results(wait_time \\ 5000) do
     receive do
-      {:ezprofiler, :timeout} -> {:error, :ezprofiler_timeout}
+      {:ezprofiler, :profiling_timeout} -> {:error, :profiling_timeout}
+      {:ezprofiler, :start_profiling_timeout} -> {:error, :start_profiling_timeout}
       {:results_available, results} -> {:ok, results}
     after
       wait_time -> {:error, :timeout}
@@ -260,15 +268,18 @@ defmodule EZProfiler.Manager do
     do_apply(EZProfiler.ProfilerOnTarget, :allow_label_transition, [node(), allow?])
 
   @doc """
-  Specifies how long we wait for profiling to actually start upon issuing `enable_profiling/1`.
+  Specifies how long we wait for profiling to actually complete once started.
 
-  Time is specified in milliseconds. Call this before `enable_profiling/1`
+  Time is specified in milliseconds.
 
   """
   @spec profiling_time(profiling_time()) :: :ok
   def profiling_time(time), do:
     do_apply(EZProfiler.ProfilerOnTarget, :profiling_time, [node(), time])
 
+  @spec profiling_start_wait(profiling_time() | :infinity) :: :ok
+  def profiling_start_wait(time) when time == :infinity or is_integer(time), do:
+    do_apply(EZProfiler.ProfilerOnTarget, :profiling_start_wait, [node(), time])
 
   @doc """
   This is an asynchronous version of `EZProfiler.Manager.wait_for_results/1`. This will cause a message to be sent to the process id specified as the first argument.
@@ -278,8 +289,8 @@ defmodule EZProfiler.Manager do
   Three messages can be received:
 
       {:ezprofiler_results, result}
-      {:ezprofiler, :timeout}
-
+      {:ezprofiler, :profiling_timeout}
+      {:error, :profiling_timeout}
 
   Result is a map:
 
