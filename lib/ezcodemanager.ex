@@ -277,6 +277,12 @@ defmodule EZProfiler.Manager do
   def profiling_time(time), do:
     do_apply(EZProfiler.ProfilerOnTarget, :profiling_time, [node(), time])
 
+  @doc """
+  Specifies how long we wait for profiling to actually start once `enable_profiling/1` is issued.
+
+  Time is specified in milliseconds or the atom `:infinity`, default `:infinity`
+
+  """
   @spec profiling_start_wait(profiling_time() | :infinity) :: :ok
   def profiling_start_wait(time) when time == :infinity or is_integer(time), do:
     do_apply(EZProfiler.ProfilerOnTarget, :profiling_start_wait, [node(), time])
