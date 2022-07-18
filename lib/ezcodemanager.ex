@@ -153,7 +153,7 @@ defmodule EZProfiler.Manager do
   The exception to this is `ezprofiler_path` that takes the following options:
 
         :system - if `ezprofiler` is defined via the `PATH` env variable.
-        :deps - if `ezprofiler` is included as an application in `mix.ezs`
+        :deps - if `ezprofiler` is included as a dependency in `mix.exs`
         path - a string specifying the full path for `ezprofiler`
 
   ## Example
