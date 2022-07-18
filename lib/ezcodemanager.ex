@@ -77,15 +77,14 @@ defmodule EZProfiler.Manager do
 
         ## Change timeout with `EZProfiler.Manager.profiling_time/1`
         def handle_info({:ezprofiler, :profiling_timeout}, state) do
-          # Ooops
-          EZProfiler.Manager.stop_ezprofiler()
+          # Ooops, but it's possible results are available
+          {:ok, results} = EZProfiler.Manager.get_profiling_results()
           {:noreply, state}
         end
 
         ## Change timeout with `EZProfiler.Manager.profiling_start_wait/1`
         def handle_info({:ezprofiler, :start_profiling_timeout}, state) do
           # Ooops
-          EZProfiler.Manager.stop_ezprofiler()
           {:noreply, state}
         end
 
@@ -232,6 +231,8 @@ defmodule EZProfiler.Manager do
           results_data: results  # String containing the results
         }
 
+  If `{:error, :profiling_timeout}` is returned results may still be available, call `EZProfiler.Manager.get_profiling_results()` to retrieve them
+
   """
   @spec wait_for_results(wait_time() | 5000) :: {:ok, result()} | {:error, :timeout} | {:error, :profiling_timeout} | {:error, :start_profiling_timeout}
   def wait_for_results(wait_time \\ 5000) do
@@ -296,7 +297,7 @@ defmodule EZProfiler.Manager do
 
       {:ezprofiler_results, result}
       {:ezprofiler, :profiling_timeout}
-      {:error, :profiling_timeout}
+      {:ezprofiler, :start_profiling_timeout}
 
   Result is a map:
 
@@ -308,6 +309,8 @@ defmodule EZProfiler.Manager do
         }
 
   In the case of a `GenServer` these will be received by `handle_info/2`
+
+  If `{:error, :profiling_timeout}` is returned results may still be available, call `EZProfiler.Manager.get_profiling_results()` to retrieve them.
 
   """
   @spec wait_for_results_non_block(pid() | self()) :: :ok
