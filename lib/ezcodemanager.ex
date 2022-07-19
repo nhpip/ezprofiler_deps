@@ -23,11 +23,11 @@ defmodule EZProfiler.Manager do
         ]
       end
 
-  This profiling mechanism supports two modes of operation, `synchronous` and `asynchronous`
+  This profiling mechanism supports two modes of operation, `blocking` and `non-blocking`
 
-  In synchronous mode the user starts profiling and then calls a blocking call to wait for the results.
+  In blocking mode the user starts profiling and then calls a blocking function to wait for the results.
 
-  In asynchronous mode the results are sent as a message, this will be a `handle_info/2` in the case of a `GenServer`
+  In non-blocking mode the results are sent as a message, this will be a `handle_info/2` in the case of a `GenServer`
 
   The results are a `map` or list of maps that contains:
 
@@ -38,12 +38,13 @@ defmodule EZProfiler.Manager do
           results_data: results  # String containing the results
         }
 
-  ## Synchronous Example
+  ## Blocking Example
 
         EZProfiler.Manager.start_ezprofiler(%EZProfiler.Manager.Configure{ezprofiler_path: :deps})
         ...
         ...
-        with :ok <- EZProfiler.Manager.enable_profiling(),
+        with :ok <- EZProfiler.Manager.set_mgmt_mode_blocking()  ## Set before `enable_profiling/0`
+             :ok <- EZProfiler.Manager.enable_profiling(),
              {:ok, run_results} <- EZProfiler.Manager.wait_for_results(),
              {:ok, results} <- EZProfiler.Manager.get_profiling_results(true)
         do
@@ -59,13 +60,13 @@ defmodule EZProfiler.Manager do
   The function `wait_for_results/1` will return the results of that current profiling run, whereas `get_profiling_results/1` returns a list of
   results for that entire run (e.g. if label transition is selected). This is cleared if `enable_profiling/1` or `disable_profiling/0` is called
 
-  ## Asynchronous Example as a GenServer
+  ## Non-blocking Example as a GenServer
 
         ## Your handle_cast
         def handle_cast(:start_profiling, state) do
           EZProfiler.Manager.start_ezprofiler(%EZProfiler.Manager.Configure{ezprofiler_path: :deps})
+          EZProfiler.Manager.set_mgmt_mode_non_blocking()  ## Set before `enable_profiling/0`
           EZProfiler.Manager.enable_profiling()
-          EZProfiler.Manager.wait_for_results_non_block()
           {:noreply, state}
         end
 
@@ -234,14 +235,19 @@ defmodule EZProfiler.Manager do
   If `{:error, :profiling_timeout}` is returned results may still be available, call `EZProfiler.Manager.get_profiling_results()` to retrieve them
 
   """
-  @spec wait_for_results(wait_time() | 5000) :: {:ok, result()} | {:error, :timeout} | {:error, :profiling_timeout} | {:error, :start_profiling_timeout}
+  @spec wait_for_results(wait_time() | 5000) :: {:ok, result()} | {:error, :timeout} | {:error, :profiling_timeout}
+                                                                | {:error, :start_profiling_timeout} | {:error, :not_running}
   def wait_for_results(wait_time \\ 5000) do
-    receive do
-      {:ezprofiler, :profiling_timeout} -> {:error, :profiling_timeout}
-      {:ezprofiler, :start_profiling_timeout} -> {:error, :start_profiling_timeout}
-      {:results_available, results} -> {:ok, results}
-    after
-      wait_time -> {:error, :timeout}
+    if not is_nil(Process.whereis(:ezprofiler_main)) && not is_nil(Process.whereis(:cstop_profiler)) do
+       receive do
+        {:ezprofiler, :profiling_timeout} -> {:error, :profiling_timeout}
+        {:ezprofiler, :start_profiling_timeout} -> {:error, :start_profiling_timeout}
+        {:results_available, results} -> {:ok, results}
+      after
+        wait_time -> {:error, :timeout}
+      end
+    else
+      {:error, :not_running}
     end
   end
 
@@ -264,7 +270,7 @@ defmodule EZProfiler.Manager do
   This permits profiling a flow that may involve messages between a number of processes.
 
   """
-  @spec allow_label_transition(boolean()) :: :ok
+  @spec allow_label_transition(boolean()) :: :ok | {:error, :not_running}
   def allow_label_transition(allow?) when is_boolean(allow?), do:
     do_apply(EZProfiler.ProfilerOnTarget, :allow_label_transition, [node(), allow?])
 
@@ -274,7 +280,7 @@ defmodule EZProfiler.Manager do
   Time is specified in milliseconds.
 
   """
-  @spec profiling_time(profiling_time()) :: :ok
+  @spec profiling_time(profiling_time()) :: :ok | {:error, :not_running}
   def profiling_time(time), do:
     do_apply(EZProfiler.ProfilerOnTarget, :profiling_time, [node(), time])
 
@@ -284,14 +290,13 @@ defmodule EZProfiler.Manager do
   Time is specified in milliseconds or the atom `:infinity`, default `:infinity`
 
   """
-  @spec profiling_start_wait(profiling_time() | :infinity) :: :ok
+  @spec profiling_start_wait(profiling_time() | :infinity) :: :ok | {:error, :not_running}
   def profiling_start_wait(time) when time == :infinity or is_integer(time), do:
     do_apply(EZProfiler.ProfilerOnTarget, :profiling_start_wait, [node(), time])
 
   @doc """
-  This is an asynchronous version of `EZProfiler.Manager.wait_for_results/1`. This will cause a message to be sent to the process id specified as the first argument.
-
-  If no pid is specified the result is sent to `self()`
+  Sets the operating mode to non-blocking. This will cause events from the profiler to be sent to the process id specified.
+  If no process id is specified the result is sent to `self()`
 
   Three messages can be received:
 
@@ -301,19 +306,37 @@ defmodule EZProfiler.Manager do
 
   Result is a map:
 
-          %{type: type,          # One of :normal or :pseudo
-          label: label,          # The label used by this run
-          filename: filename,    # The results file
-          profiler: profiler,    # "eprof, "fprof", "cprof" or :no_profiler in case of pseudo
-          results_data: results  # String containing the results
-        }
+          %{
+              type: type,          # One of :normal or :pseudo
+              label: label,          # The label used by this run
+              filename: filename,    # The results file
+              profiler: profiler,    # "eprof, "fprof", "cprof" or :no_profiler in case of pseudo
+              results_data: results  # String containing the results
+          }
 
   In the case of a `GenServer` these will be received by `handle_info/2`
 
-  If `{:error, :profiling_timeout}` is returned results may still be available, call `EZProfiler.Manager.get_profiling_results()` to retrieve them.
+  If `{:error, :profiling_timeout}` is returned results may still be available, call `EZProfiler.Manager.get_profiling_results/0` to retrieve them.
 
   """
-  @spec wait_for_results_non_block(pid() | self()) :: :ok
+  @spec set_mgmt_mode_non_blocking(pid() | self()) :: :ok | {:error, :not_running}
+  def set_mgmt_mode_non_blocking(pid \\ nil) do
+    pid = if pid, do: pid, else: self()
+    do_apply(EZProfiler.ProfilerOnTarget, :set_mgmt_mode_non_blocking, [node(), pid])
+  end
+
+  @doc """
+  Sets the operating mode to blocking. This requires the user to make calls to `EZProfiler.Manager.wait_for_results/0` and
+  `EZProfiler.Manager.get_profiling_results/0` to get the profiling results.
+
+  """
+  @spec set_mgmt_mode_blocking() :: :ok | {:error, :not_running}
+  def set_mgmt_mode_blocking() do
+    do_apply(EZProfiler.ProfilerOnTarget, :set_mgmt_mode_blocking, [node()])
+  end
+
+  @doc deprecated: "Use EZProfiler.Manager.set_mgmt_mode_non_blocking/1 instead"
+  @spec wait_for_results_non_block(pid() | self()) :: :ok | {:error, :not_running}
   def wait_for_results_non_block(pid \\ nil) do
     pid = if pid, do: pid, else: self()
     do_apply(EZProfiler.ProfilerOnTarget, :change_code_manager_pid, [node(), pid])
@@ -325,7 +348,7 @@ defmodule EZProfiler.Manager do
   On success it will return the tuple `{:ok, results}`
 
   """
-  @spec get_profiling_results(display() | false) :: {:ok, results()} | {:error, atom()}
+  @spec get_profiling_results(display() | false) :: {:ok, results()} | {:error, :not_running} | {:error, atom()}
   def get_profiling_results(display \\ false) do
     case do_apply(EZProfiler.ProfilerOnTarget, :get_latest_results, [node()]) do
       {:profiling_results, results} ->
@@ -440,7 +463,7 @@ defmodule EZProfiler.Manager do
   end
 
   defp do_apply(mod, fun, args) do
-    if not is_nil(Process.whereis(:ezprofiler_main)) || not is_nil(Process.whereis(:cstop_profiler)),
+    if not is_nil(Process.whereis(:ezprofiler_main)) && not is_nil(Process.whereis(:cstop_profiler)),
        do: Kernel.apply(mod, fun, args),
        else: {:error, :not_running}
   end
